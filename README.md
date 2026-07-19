@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SatuKit
 
-## Getting Started
+**Фото товара → продающий пост, ответы покупателям и публичная карточка с WhatsApp — за 90 секунд.**
 
-First, run the development server:
+🔗 **Живой продукт:** https://vitrina-drab-one.vercel.app
+🧾 **Пример карточки:** https://vitrina-drab-one.vercel.app/p/example
+🎥 **Демо-видео:** _(добавить ссылку)_
+
+Хакатон «Startup Platform для партнёра». Работа индивидуальная, код написан в период хакатона.
+
+## Партнёр
+
+**EmpoWomen — APEC Training Centre & ASMAR** (программа Community Partnership, поддержка Chevron): практическое обучение, менторство и экономическое участие женщин-предпринимательниц в Казахстане (обучение включает AI, мобильную фотографию, SMM, продвижение товаров).
+
+## Проблема
+
+Женщины, которые делают или перепродают товары, обычно уже имеют фото товара, но им не хватает времени, уверенности или маркетингового навыка, чтобы превратить его в понятный оффер. Разрыв не в «написать подпись», а в дистанции между *«есть товар»* и *«есть готовый актив для продажи»*. SatuKit продолжает обучение EmpoWomen в исполнение: не учит SMM абстрактно, а из реального товара делает готовую страницу и набор сообщений.
+
+## Что делает продукт
+
+Один сценарий, доведённый до конца:
+
+1. Загрузи одно фото товара (уменьшается на устройстве до отправки).
+2. Введи название (обязательно) + по желанию факты, цену/себестоимость+маржу, город, язык (RU/KK).
+3. За ~30–60 с получаешь **набор для продаж**: цепляющий заголовок, продающее описание, пост для Instagram, сообщение WhatsApp, 3–5 ответов покупателям, советы по съёмке.
+4. Правь текст, копируй в один тап.
+5. Опубликуй **постоянную публичную карточку** (`/p/<slug>`) с кнопкой WhatsApp — готовый актив, который можно кинуть покупателю.
+
+**Правда важнее красоты:** продукт не выдумывает факты (сертификаты, состав, доставку, скидки, гарантии и т.п.) — непроверенное выносится в отдельный чек-лист и не попадает в публичную карточку. Есть **режим примера**, который работает даже если AI недоступен.
+
+## Стек
+
+- **Next.js 16** (App Router) + TypeScript + Tailwind v4, деплой на **Vercel**.
+- **LLM:** Google **Gemini 2.5 Flash** (vision) через `@google/genai`, JSON-вывод, валидация Zod + один repair-проход. _(Спека писалась под Claude; переключено на Gemini ради бесплатного tier — адаптер модели через `AI_MODEL`.)_
+- **Данные:** **Supabase** Postgres (RLS deny-all, доступ только сервер-роль) + публичный Storage-бакет для фото.
+- **Тесты:** Vitest на чистую логику (валидация фактов, прайс-флор, нормализация телефона, публичный фильтр).
+
+## Запуск локально
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+# создать .env.local (см. ниже)
+npm run dev      # http://localhost:3000
+npm test         # unit-тесты
+npm run build    # прод-сборка
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+GEMINI_API_KEY=<ключ Google AI Studio>
+AI_MODEL=gemini-2.5-flash
+SUPABASE_URL=https://<ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service_role ключ>
+APP_BASE_URL=<публичный URL приложения>
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Схема БД — в [`supabase/migration.sql`](supabase/migration.sql) (выполнить в Supabase SQL Editor; создаёт таблицы + публичный бакет `product-images`).
 
-## Learn More
+## Структура
 
-To learn more about Next.js, take a look at the following resources:
+- `app/page.tsx` — весь клиентский флоу (загрузка → форма → результат → публикация → фидбэк).
+- `app/api/generate` — фото+форма → kit (Gemini + валидация + вставка).
+- `app/api/products/[id]` (правки) · `.../publish` (публикация) · `app/p/[slug]` — публичная карточка.
+- `app/api/feedback`, `app/api/events`, `app/api/health`.
+- `lib/` — `schemas` (контракт), `llm` (Gemini), `db` (Supabase), `validate`/`price`/`wa` (чистая логика), `resize`, `example`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Дистрибуция и фидбэк
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Пруфы фидбэка пользователей — в [`distribution/feedback-form.md`](distribution/feedback-form.md); шаблоны и план охвата — в [`distribution/dm-script.md`](distribution/dm-script.md).
