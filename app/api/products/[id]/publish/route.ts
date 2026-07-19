@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProduct, updateProduct } from "@/lib/db";
 import { toE164 } from "@/lib/wa";
+import { validateOutput } from "@/lib/validate";
+import type { FormInput } from "@/lib/schemas";
 
 export const maxDuration = 10;
 
@@ -32,6 +34,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (row.public_slug) {
       if (row.whatsapp_e164 !== e164) await updateProduct(id, { whatsapp_e164: e164 });
       return NextResponse.json({ slug: row.public_slug, url: `${base}/p/${row.public_slug}` });
+    }
+
+    // Fail-closed: a kit that still fails validation never becomes public.
+    const issues = validateOutput(row.generated_output, {
+      product_name: row.product_name,
+      facts: row.facts ?? undefined,
+      language: row.language,
+    } as FormInput);
+    if (issues.length) {
+      return NextResponse.json({ error: "issues", issues }, { status: 422 });
     }
 
     const slug = makeSlug();

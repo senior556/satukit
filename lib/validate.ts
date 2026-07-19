@@ -119,6 +119,51 @@ export function buildRepairHint(issues: string[]): string {
   return parts.join("; ");
 }
 
+// ---- Human-readable issue labels (result banner + publish 422) -----------
+const ISSUE_LABELS_RU: Record<string, string> = {
+  faq_count: "вопросов покупателя должно быть 3–5",
+  tips_count: "советов по презентации больше трёх",
+  lang_kk: "текст не на казахском, хотя выбран казахский",
+  ig_len: "пост для Instagram длиннее лимита",
+  wa_len: "сообщение WhatsApp длиннее лимита",
+};
+
+const PROHIBITED_LABELS_RU: Record<string, string> = {
+  certifications: "упомянуты сертификаты, которых вы не указывали",
+  ingredients: "упомянут состав, которого вы не указывали",
+  origin: "упомянуто происхождение, которого вы не указывали",
+  stock: "упомянуто наличие, которого вы не указывали",
+  delivery: "упомянута доставка, которой вы не указывали",
+  medical: "упомянуты лечебные свойства — их нельзя обещать без подтверждения",
+  discounts: "упомянуты скидки, которых вы не указывали",
+  guarantees: "упомянуты гарантии, которых вы не указывали",
+};
+
+/**
+ * Map issue codes to human-readable Russian labels for the seller.
+ * Duplicate labels are collapsed; unknown codes are dropped.
+ */
+export function describeIssuesRu(issues: string[]): string[] {
+  const parts: string[] = [];
+  let emptyAdded = false;
+
+  for (const code of issues) {
+    if (code.startsWith("prohibited:")) {
+      const cat = code.slice("prohibited:".length);
+      parts.push(PROHIBITED_LABELS_RU[cat] ?? "остались неподтверждённые утверждения");
+    } else if (code.startsWith("empty:")) {
+      if (!emptyAdded) {
+        parts.push("часть текста не сгенерировалась");
+        emptyAdded = true;
+      }
+    } else if (ISSUE_LABELS_RU[code]) {
+      parts.push(ISSUE_LABELS_RU[code]);
+    }
+  }
+
+  return [...new Set(parts)];
+}
+
 // ---- Public payload filter ----------------------------------------------
 type ProductRow = {
   product_name: string;

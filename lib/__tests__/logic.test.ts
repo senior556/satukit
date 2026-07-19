@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { AiOutput, FormInput } from "../schemas";
-import { validateOutput, buildRepairHint, filterPublicPayload } from "../validate";
+import { validateOutput, buildRepairHint, filterPublicPayload, describeIssuesRu } from "../validate";
 import { priceFloorMinor } from "../price";
 import { toE164, waLink } from "../wa";
 
@@ -207,5 +207,22 @@ describe("filterPublicPayload", () => {
       language: "kk" as const,
     };
     expect(filterPublicPayload(row).whatsapp_e164).toBe("");
+  });
+});
+
+describe("describeIssuesRu", () => {
+  it("maps prohibited codes to human labels", () => {
+    const labels = describeIssuesRu(["prohibited:delivery"]);
+    expect(labels).toHaveLength(1);
+    expect(labels[0]).toMatch(/доставк/i);
+  });
+
+  it("collapses empty:* codes into one label and drops unknown codes", () => {
+    const labels = describeIssuesRu(["empty:headline", "empty:description", "nonsense"]);
+    expect(labels).toHaveLength(1);
+  });
+
+  it("returns nothing for a clean kit", () => {
+    expect(describeIssuesRu([])).toEqual([]);
   });
 });
