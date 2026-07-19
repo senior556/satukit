@@ -7,6 +7,7 @@ import { EXAMPLE_PRODUCT } from "@/lib/example";
 import { priceFloorMinor } from "@/lib/price";
 import { resizeImage, type ResizedImage } from "@/lib/resize";
 import type { AiOutput, Lang } from "@/lib/schemas";
+import { describeIssuesRu } from "@/lib/validate";
 
 type ViewState =
   | "landing"
@@ -21,6 +22,7 @@ type FormState = {
   facts: string;
   costTenge: string;
   marginPercent: string;
+  priceTenge: string;
   region: string;
   language: Lang;
 };
@@ -46,6 +48,7 @@ const INITIAL_FORM: FormState = {
   facts: "",
   costTenge: "",
   marginPercent: "",
+  priceTenge: "",
   region: "",
   language: "ru",
 };
@@ -175,6 +178,7 @@ export default function Home() {
 
       const cost = Number(form.costTenge);
       const margin = Number(form.marginPercent);
+      const price = Number(form.priceTenge);
       const requestForm = {
         product_name: form.productName.trim(),
         facts: form.facts.trim() || undefined,
@@ -184,6 +188,10 @@ export default function Home() {
         margin_percent:
           form.marginPercent.trim() !== "" && Number.isFinite(margin)
             ? margin
+            : undefined,
+        price:
+          form.priceTenge.trim() !== "" && Number.isFinite(price)
+            ? Math.round(price)
             : undefined,
         language: form.language,
       };
@@ -252,6 +260,12 @@ export default function Home() {
     setView(image ? "image-ready" : "landing");
   }
 
+  const enteredPrice = Number(form.priceTenge);
+  const enteredPriceTenge =
+    form.priceTenge.trim() !== "" && Number.isFinite(enteredPrice)
+      ? Math.round(enteredPrice)
+      : null;
+
   const displayed =
     view === "example"
       ? {
@@ -269,7 +283,7 @@ export default function Home() {
             imageUrl: result.imageUrl,
             productName: form.productName,
             region: form.region,
-            priceTenge: priceFloorTenge,
+            priceTenge: enteredPriceTenge ?? priceFloorTenge,
             output: result.output,
             isExample: false,
             productId: result.id,
@@ -310,9 +324,11 @@ export default function Home() {
       {displayed ? (
         <ResultView
           {...displayed}
+          issues={view === "result" && result ? result.issues : []}
           copyStatus={copyStatus}
           onCopy={copyText}
           onBack={returnToForm}
+          onRegenerate={() => void generate()}
         />
       ) : (
         <section className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-10 sm:px-8 sm:py-16 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
@@ -427,6 +443,23 @@ export default function Home() {
                 />
                 <span className="mt-2 block text-xs leading-5 text-black/45">
                   Если факта здесь нет, SatuKit не должен выдавать его за правду.
+                </span>
+              </Field>
+
+              <Field label="Цена для покупателя, ₸" htmlFor="price">
+                <input
+                  id="price"
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  step="1"
+                  value={form.priceTenge}
+                  onChange={(event) => updateForm("priceTenge", event.target.value)}
+                  placeholder="8000"
+                  className={inputClassName}
+                />
+                <span className="mt-2 block text-xs leading-5 text-black/45">
+                  Появится на публичной карточке. Пусто — карточка выйдет без цены.
                 </span>
               </Field>
 
@@ -566,9 +599,11 @@ function ResultView({
   isExample,
   productId,
   editToken,
+  issues,
   copyStatus,
   onCopy,
   onBack,
+  onRegenerate,
 }: {
   imageUrl: string;
   productName: string;
@@ -578,9 +613,11 @@ function ResultView({
   isExample: boolean;
   productId?: string;
   editToken?: string;
+  issues: string[];
   copyStatus: string;
   onCopy: (label: string, text: string) => Promise<void>;
   onBack: () => void;
+  onRegenerate: () => void;
 }) {
   return (
     <section className="mx-auto w-full max-w-6xl px-5 py-9 sm:px-8 sm:py-14">
@@ -604,13 +641,24 @@ function ResultView({
             {[region, priceTenge ? formatTenge(priceTenge) : ""].filter(Boolean).join(" · ")}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onBack}
-          className="rounded-full border border-black/15 bg-white/60 px-4 py-2.5 text-sm font-black hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b]"
-        >
-          {isExample ? "Вернуться к своему товару" : "Создать ещё"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {!isExample ? (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              className="rounded-full bg-[#201b17] px-4 py-2.5 text-sm font-black text-white hover:bg-[#3c332d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b] focus-visible:ring-offset-2"
+            >
+              Собрать заново
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onBack}
+            className="rounded-full border border-black/15 bg-white/60 px-4 py-2.5 text-sm font-black hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b]"
+          >
+            {isExample ? "Вернуться к своему товару" : "Новый товар"}
+          </button>
+        </div>
       </div>
 
       {copyStatus ? (
@@ -713,11 +761,39 @@ function ResultView({
 
           {!isExample && productId && editToken ? (
             <>
-              <PublishSection
-                productId={productId}
-                editToken={editToken}
-                onCopy={onCopy}
-              />
+              {issues.length > 0 ? (
+                <section
+                  role="alert"
+                  className="rounded-[24px] border border-[#b13b2f]/25 bg-[#fff0eb] p-5 sm:p-6"
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-[#872d24]">
+                    Публикация закрыта
+                  </p>
+                  <h2 className="mt-2 text-xl font-black">Мы не уверены в части текста</h2>
+                  <ul className="mt-4 list-disc space-y-1 pl-5 text-sm leading-6 text-[#6d302b]">
+                    {describeIssuesRu(issues).map((label) => (
+                      <li key={label}>{label}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 text-sm leading-6 text-black/60">
+                    Тексты выше можно копировать и править вручную, но карточка не публикуется,
+                    пока факты не в порядке. Обычно помогает «Собрать заново».
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onRegenerate}
+                    className="mt-4 rounded-full bg-[#201b17] px-5 py-2.5 text-sm font-black text-white hover:bg-[#3c332d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b] focus-visible:ring-offset-2"
+                  >
+                    Собрать заново
+                  </button>
+                </section>
+              ) : (
+                <PublishSection
+                  productId={productId}
+                  editToken={editToken}
+                  onCopy={onCopy}
+                />
+              )}
               <FeedbackSection productId={productId} />
             </>
           ) : null}
@@ -791,7 +867,17 @@ function PublishSection({
       });
 
       if (!response.ok) {
-        if (response.status === 422) {
+        let code = "";
+        try {
+          code = ((await response.json()) as { error?: string }).error ?? "";
+        } catch {
+          // non-JSON error body — fall through to generic messages
+        }
+        if (response.status === 422 && code === "issues") {
+          setError(
+            "Мы не уверены в части фактов — публикация закрыта. Нажмите «Собрать заново» вверху страницы и попробуйте ещё раз.",
+          );
+        } else if (response.status === 422) {
           setError("Проверьте номер WhatsApp — введите его в формате +7 700 123 45 67.");
         } else if (response.status === 403) {
           setError("Не удалось подтвердить владельца карточки. Создайте набор заново.");
