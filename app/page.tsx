@@ -6,7 +6,8 @@ import Image from "next/image";
 import { EXAMPLE_PRODUCT } from "@/lib/example";
 import { priceFloorMinor } from "@/lib/price";
 import { resizeImage, type ResizedImage } from "@/lib/resize";
-import type { AiOutput, Lang } from "@/lib/schemas";
+import type { AiOutput, CurrencyCode, Lang } from "@/lib/schemas";
+import { CURRENCY_SYMBOL, formatMoney } from "@/lib/money";
 import { describeIssuesRu } from "@/lib/validate";
 
 type ViewState =
@@ -23,6 +24,7 @@ type FormState = {
   costTenge: string;
   marginPercent: string;
   priceTenge: string;
+  currency: CurrencyCode;
   region: string;
   language: Lang;
 };
@@ -49,6 +51,7 @@ const INITIAL_FORM: FormState = {
   costTenge: "",
   marginPercent: "",
   priceTenge: "",
+  currency: "KZT",
   region: "",
   language: "ru",
 };
@@ -89,10 +92,6 @@ function blobToBase64(blob: Blob): Promise<string> {
     reader.onerror = () => reject(new Error("Не удалось прочитать изображение."));
     reader.readAsDataURL(blob);
   });
-}
-
-function formatTenge(value: number): string {
-  return new Intl.NumberFormat("ru-KZ").format(value) + " ₸";
 }
 
 function errorText(error: unknown): string {
@@ -193,6 +192,7 @@ export default function Home() {
           form.priceTenge.trim() !== "" && Number.isFinite(price)
             ? Math.round(price)
             : undefined,
+        currency: form.currency,
         language: form.language,
       };
 
@@ -273,6 +273,7 @@ export default function Home() {
           productName: EXAMPLE_PRODUCT.productName,
           region: EXAMPLE_PRODUCT.region,
           priceTenge: EXAMPLE_PRODUCT.priceTenge,
+          currency: "KZT" as CurrencyCode,
           output: EXAMPLE_PRODUCT.output,
           isExample: true,
           productId: undefined as string | undefined,
@@ -284,6 +285,7 @@ export default function Home() {
             productName: form.productName,
             region: form.region,
             priceTenge: enteredPriceTenge ?? priceFloorTenge,
+            currency: form.currency,
             output: result.output,
             isExample: false,
             productId: result.id,
@@ -446,25 +448,37 @@ export default function Home() {
                 </span>
               </Field>
 
-              <Field label="Цена для покупателя, ₸" htmlFor="price">
-                <input
-                  id="price"
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  step="1"
-                  value={form.priceTenge}
-                  onChange={(event) => updateForm("priceTenge", event.target.value)}
-                  placeholder="8000"
-                  className={inputClassName}
-                />
+              <Field label="Цена для покупателя" htmlFor="price">
+                <div className="flex gap-2">
+                  <input
+                    id="price"
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    step="1"
+                    value={form.priceTenge}
+                    onChange={(event) => updateForm("priceTenge", event.target.value)}
+                    placeholder="8000"
+                    className={`${inputClassName} flex-1`}
+                  />
+                  <select
+                    id="currency"
+                    aria-label="Валюта"
+                    value={form.currency}
+                    onChange={(event) => updateForm("currency", event.target.value as CurrencyCode)}
+                    className={`${inputClassName} w-24 shrink-0`}
+                  >
+                    <option value="KZT">₸</option>
+                    <option value="RUB">₽</option>
+                  </select>
+                </div>
                 <span className="mt-2 block text-xs leading-5 text-black/45">
                   Появится на публичной карточке. Пусто — карточка выйдет без цены.
                 </span>
               </Field>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Себестоимость, ₸" htmlFor="cost">
+                <Field label={`Себестоимость, ${CURRENCY_SYMBOL[form.currency]}`} htmlFor="cost">
                   <input
                     id="cost"
                     type="number"
@@ -495,7 +509,7 @@ export default function Home() {
 
               {priceFloorTenge !== null ? (
                 <p className="-mt-3 rounded-xl bg-[#eef0df] px-4 py-3 text-sm font-bold text-[#3f4828]">
-                  Не продавать дешевле {formatTenge(priceFloorTenge)}, чтобы сохранить маржу.
+                  Не продавать дешевле {formatMoney(priceFloorTenge, form.currency)}, чтобы сохранить маржу.
                 </p>
               ) : null}
 
@@ -595,6 +609,7 @@ function ResultView({
   productName,
   region,
   priceTenge,
+  currency,
   output,
   isExample,
   productId,
@@ -609,6 +624,7 @@ function ResultView({
   productName: string;
   region: string;
   priceTenge: number | null;
+  currency: CurrencyCode;
   output: AiOutput;
   isExample: boolean;
   productId?: string;
@@ -619,6 +635,29 @@ function ResultView({
   onBack: () => void;
   onRegenerate: () => void;
 }) {
+  const kitText = [
+    output.headline,
+    "",
+    "Пост для Instagram:",
+    output.instagram_caption,
+    "",
+    "Сообщение для WhatsApp:",
+    output.whatsapp_message,
+  ].join("\n");
+
+  async function shareKit() {
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ text: kitText });
+        return;
+      } catch (error) {
+        if ((error as DOMException)?.name === "AbortError") return;
+        // share sheet unavailable — fall through to copying
+      }
+    }
+    await onCopy("Весь набор", kitText);
+  }
+
   return (
     <section className="mx-auto w-full max-w-6xl px-5 py-9 sm:px-8 sm:py-14">
       <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
@@ -638,10 +677,24 @@ function ResultView({
             {productName}
           </h1>
           <p className="mt-2 text-black/50">
-            {[region, priceTenge ? formatTenge(priceTenge) : ""].filter(Boolean).join(" · ")}
+            {[region, priceTenge ? formatMoney(priceTenge, currency) : ""].filter(Boolean).join(" · ")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void shareKit()}
+            className="rounded-full bg-[#9f432b] px-4 py-2.5 text-sm font-black text-white hover:bg-[#873821] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b] focus-visible:ring-offset-2"
+          >
+            Поделиться
+          </button>
+          <button
+            type="button"
+            onClick={() => void onCopy("Весь набор", kitText)}
+            className="rounded-full bg-[#201b17] px-4 py-2.5 text-sm font-black text-white hover:bg-[#3c332d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b] focus-visible:ring-offset-2"
+          >
+            Скопировать всё
+          </button>
           {!isExample ? (
             <button
               type="button"

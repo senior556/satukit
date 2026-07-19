@@ -40,7 +40,9 @@ export async function generateKit(
   const facts = [
     `Название: ${form.product_name}`,
     form.facts ? `Факты от продавца: ${form.facts}` : "",
-    form.price ? `Цена: ${form.price} ₸` : "",
+    form.price
+      ? `Цена: ${form.price} ${form.currency === "RUB" ? "₽ (все цены пиши в рублях)" : "₸"}`
+      : "",
     form.region ? `Город/регион: ${form.region}` : "",
   ]
     .filter(Boolean)

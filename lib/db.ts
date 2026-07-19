@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { AiOutput } from "./schemas";
+import type { StoredKit } from "./schemas";
 
 const BUCKET = "product-images";
 
@@ -25,7 +25,7 @@ export type ProductRow = {
   margin_percent: number | null;
   whatsapp_e164: string | null;
   image_url: string;
-  generated_output: AiOutput;
+  generated_output: StoredKit;
   confirmed_claims: string[];
   public_slug: string | null;
   edit_token: string;

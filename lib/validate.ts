@@ -1,4 +1,4 @@
-import type { AiOutput, FormInput, PublicCard, Lang } from "./schemas";
+import type { AiOutput, FormInput, PublicCard, Lang, StoredKit } from "./schemas";
 
 // ---- Prohibited claim categories (TRD §6) --------------------------------
 // A category is "prohibited" when it appears in the generated public text but
@@ -167,7 +167,7 @@ export function describeIssuesRu(issues: string[]): string[] {
 // ---- Public payload filter ----------------------------------------------
 type ProductRow = {
   product_name: string;
-  generated_output: AiOutput;
+  generated_output: StoredKit;
   price_minor: number | null;
   region: string | null;
   image_url: string;
@@ -189,5 +189,6 @@ export function filterPublicPayload(row: ProductRow): PublicCard {
     image_url: row.image_url,
     whatsapp_e164: row.whatsapp_e164 ?? "",
     language: row.language,
+    currency: row.generated_output.currency ?? "KZT",
   };
 }

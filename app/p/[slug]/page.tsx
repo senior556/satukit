@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getPublicBySlug } from "@/lib/db";
 import { filterPublicPayload } from "@/lib/validate";
 import { waLink } from "@/lib/wa";
+import { CURRENCY_SYMBOL } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,9 @@ export default async function CardPage({ params }: { params: Promise<{ slug: str
       />
       <h1 className="mt-4 text-2xl font-bold">{card.product_name}</h1>
       {price != null && (
-        <p className="mt-1 text-xl font-semibold">{price.toLocaleString("ru-RU")} ₸</p>
+        <p className="mt-1 text-xl font-semibold">
+          {price.toLocaleString("ru-RU")} {CURRENCY_SYMBOL[card.currency]}
+        </p>
       )}
       {card.region && <p className="mt-1 text-sm text-gray-500">{card.region}</p>}
       <p className="mt-4 whitespace-pre-wrap text-gray-800 leading-relaxed">{card.description}</p>

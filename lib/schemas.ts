@@ -3,6 +3,9 @@ import { z } from "zod";
 export const LANG = z.enum(["ru", "kk"]);
 export type Lang = z.infer<typeof LANG>;
 
+export const CURRENCY = z.enum(["KZT", "RUB"]);
+export type CurrencyCode = z.infer<typeof CURRENCY>;
+
 // ---- Form input (client → /api/generate). product_name is the ONLY required field.
 export const FormSchema = z.object({
   product_name: z.string().min(1).max(120),
@@ -12,6 +15,7 @@ export const FormSchema = z.object({
   cost: z.number().nonnegative().optional(), // tenge
   margin_percent: z.number().gt(0).lt(95).optional(),
   language: LANG.default("ru"),
+  currency: CURRENCY.default("KZT"),
 });
 export type FormInput = z.infer<typeof FormSchema>;
 
@@ -31,6 +35,10 @@ export const AiOutputSchema = z.object({
 });
 export type AiOutput = z.infer<typeof AiOutputSchema>;
 
+// The kit as persisted in products.generated_output: model output + seller currency
+// (products has no currency column, so the code rides inside the JSONB).
+export type StoredKit = AiOutput & { currency?: CurrencyCode };
+
 // ---- Public card payload (only confirmed, non-sensitive fields; TRD §5 GET /p/[slug])
 export const PublicCardSchema = z.object({
   product_name: z.string(),
@@ -40,6 +48,7 @@ export const PublicCardSchema = z.object({
   image_url: z.string(),
   whatsapp_e164: z.string(),
   language: LANG,
+  currency: CURRENCY,
 });
 export type PublicCard = z.infer<typeof PublicCardSchema>;
 

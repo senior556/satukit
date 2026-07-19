@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       cost_minor: f.cost != null ? Math.round(f.cost * 100) : null,
       margin_percent: f.margin_percent ?? null,
       image_url: imageUrl,
-      generated_output: output,
+      generated_output: { ...output, currency: f.currency },
       confirmed_claims: [],
       model_name: AI_MODEL_NAME,
     });

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { AiOutput, FormInput } from "../schemas";
 import { validateOutput, buildRepairHint, filterPublicPayload, describeIssuesRu } from "../validate";
 import { priceFloorMinor } from "../price";
+import { CURRENCY_SYMBOL, formatMoney } from "../money";
 import { toE164, waLink } from "../wa";
 
 // ---- Good fixtures (valid output, no prohibited claims) ------------------
@@ -187,6 +188,7 @@ describe("filterPublicPayload", () => {
       image_url: "https://example.com/honey.jpg",
       whatsapp_e164: "+77001234567",
       language: "ru",
+      currency: "KZT",
     });
 
     const keys = Object.keys(card);
@@ -224,5 +226,17 @@ describe("describeIssuesRu", () => {
 
   it("returns nothing for a clean kit", () => {
     expect(describeIssuesRu([])).toEqual([]);
+  });
+});
+
+describe("formatMoney", () => {
+  it("formats both currencies with their symbols", () => {
+    expect(formatMoney(500, "KZT")).toBe("500 ₸");
+    expect(formatMoney(500, "RUB")).toBe("500 ₽");
+  });
+
+  it("has a symbol for every supported currency", () => {
+    expect(CURRENCY_SYMBOL.KZT).toBe("₸");
+    expect(CURRENCY_SYMBOL.RUB).toBe("₽");
   });
 });
