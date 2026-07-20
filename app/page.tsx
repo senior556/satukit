@@ -128,11 +128,7 @@ export default function Home() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function onImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
+  async function handleImageFile(file: File) {
     setResizeMessage("Подготавливаем фото на вашем устройстве…");
     setErrorMessage("");
 
@@ -150,6 +146,30 @@ export default function Home() {
       setView("error");
       setResizeMessage("");
     }
+  }
+
+  const handleImageFileRef = useRef(handleImageFile);
+  handleImageFileRef.current = handleImageFile;
+
+  useEffect(() => {
+    function onPaste(event: ClipboardEvent) {
+      const item = Array.from(event.clipboardData?.items ?? []).find((entry) =>
+        entry.type.startsWith("image/"),
+      );
+      const file = item?.getAsFile();
+      if (!file) return;
+      event.preventDefault();
+      void handleImageFileRef.current(file);
+    }
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, []);
+
+  async function onImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    await handleImageFile(file);
   }
 
   async function generate(event?: FormEvent) {
@@ -331,6 +351,9 @@ export default function Home() {
           onCopy={copyText}
           onBack={returnToForm}
           onRegenerate={() => void generate()}
+          onEdited={(updated) =>
+            setResult((current) => (current ? { ...current, output: updated } : current))
+          }
         />
       ) : (
         <section className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-10 sm:px-8 sm:py-16 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
@@ -339,11 +362,12 @@ export default function Home() {
               Бесплатно · RU / KK · за минуту
             </p>
             <h1 className="max-w-xl text-4xl font-black leading-[0.98] tracking-[-0.045em] sm:text-6xl">
-              Из одного фото — готовый набор для продаж
+              Фото товара → покупатели пишут вам в WhatsApp
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-8 text-black/65">
-              Добавьте товар и несколько честных фактов. SatuKit подготовит описание,
-              пост для Instagram, сообщение WhatsApp и ответы покупателям.
+              Добавьте фото и несколько честных фактов — SatuKit соберёт продающий пост,
+              сообщение WhatsApp, ответы покупателям и страничку-витрину с кнопкой.
+              У SMM-специалиста такой пост стоит 5–10 тысяч тенге. Здесь — бесплатно.
             </p>
 
             <div className="mt-9 grid max-w-lg grid-cols-3 gap-2">
@@ -410,7 +434,7 @@ export default function Home() {
                         </span>
                         <span className="mt-4 block font-black">Добавить фото *</span>
                         <span className="mt-1 block text-sm text-black/50">
-                          JPEG, PNG, WebP или HEIC · до 20 МБ
+                          JPEG, PNG, WebP или HEIC · до 20 МБ · или вставьте фото (Ctrl+V)
                         </span>
                       </div>
                     </div>
@@ -619,6 +643,7 @@ function ResultView({
   onCopy,
   onBack,
   onRegenerate,
+  onEdited,
 }: {
   imageUrl: string;
   productName: string;
@@ -634,6 +659,7 @@ function ResultView({
   onCopy: (label: string, text: string) => Promise<void>;
   onBack: () => void;
   onRegenerate: () => void;
+  onEdited: (updated: AiOutput) => void;
 }) {
   const kitText = [
     output.headline,
@@ -656,6 +682,47 @@ function ResultView({
       }
     }
     await onCopy("Весь набор", kitText);
+  }
+
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [draft, setDraft] = useState({
+    headline: "",
+    description: "",
+    instagram_caption: "",
+    whatsapp_message: "",
+  });
+
+  function startEditing() {
+    setDraft({
+      headline: output.headline,
+      description: output.description,
+      instagram_caption: output.instagram_caption,
+      whatsapp_message: output.whatsapp_message,
+    });
+    setEditError("");
+    setEditing(true);
+  }
+
+  async function saveEdits() {
+    if (!productId || !editToken) return;
+    setSaving(true);
+    setEditError("");
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ editToken, fields: draft }),
+      });
+      if (!response.ok) throw new Error("patch failed");
+      onEdited({ ...output, ...draft });
+      setEditing(false);
+    } catch {
+      setEditError("Не удалось сохранить. Проверьте интернет и попробуйте ещё раз.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -695,6 +762,15 @@ function ResultView({
           >
             Скопировать всё
           </button>
+          {!isExample && productId && editToken ? (
+            <button
+              type="button"
+              onClick={startEditing}
+              className="rounded-full border border-black/15 bg-white/60 px-4 py-2.5 text-sm font-black hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b]"
+            >
+              Редактировать
+            </button>
+          ) : null}
           {!isExample ? (
             <button
               type="button"
@@ -745,6 +821,79 @@ function ResultView({
         </div>
 
         <div className="space-y-5">
+          {editing ? (
+            <section className="rounded-[24px] border border-[#9f432b]/25 bg-[#fff8ed] p-5 sm:p-6">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f432b]">
+                Редактирование
+              </p>
+              <div className="mt-4 space-y-4">
+                <Field label="Заголовок" htmlFor="edit-headline">
+                  <input
+                    id="edit-headline"
+                    value={draft.headline}
+                    onChange={(event) => setDraft({ ...draft, headline: event.target.value })}
+                    className={inputClassName}
+                  />
+                </Field>
+                <Field label="Описание" htmlFor="edit-description">
+                  <textarea
+                    id="edit-description"
+                    rows={4}
+                    value={draft.description}
+                    onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+                    className={`${inputClassName} resize-y`}
+                  />
+                </Field>
+                <Field label="Пост для Instagram" htmlFor="edit-instagram">
+                  <textarea
+                    id="edit-instagram"
+                    rows={6}
+                    value={draft.instagram_caption}
+                    onChange={(event) =>
+                      setDraft({ ...draft, instagram_caption: event.target.value })
+                    }
+                    className={`${inputClassName} resize-y`}
+                  />
+                </Field>
+                <Field label="Сообщение для WhatsApp" htmlFor="edit-whatsapp">
+                  <textarea
+                    id="edit-whatsapp"
+                    rows={4}
+                    value={draft.whatsapp_message}
+                    onChange={(event) =>
+                      setDraft({ ...draft, whatsapp_message: event.target.value })
+                    }
+                    className={`${inputClassName} resize-y`}
+                  />
+                </Field>
+              </div>
+              {editError ? (
+                <p
+                  role="alert"
+                  className="mt-3 rounded-xl border border-[#b13b2f]/20 bg-[#fff0eb] px-4 py-3 text-sm leading-6 text-[#6d302b]"
+                >
+                  {editError}
+                </p>
+              ) : null}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void saveEdits()}
+                  className="rounded-full bg-[#9f432b] px-5 py-2.5 text-sm font-black text-white hover:bg-[#873821] disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b] focus-visible:ring-offset-2"
+                >
+                  {saving ? "Сохраняем…" : "Сохранить"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="rounded-full border border-black/15 px-5 py-2.5 text-sm font-black hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b]"
+                >
+                  Отмена
+                </button>
+              </div>
+            </section>
+          ) : null}
           <CopyCard
             eyebrow="Instagram"
             title="Готовый пост"
