@@ -356,7 +356,8 @@ export default function Home() {
           }
         />
       ) : (
-        <section className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-10 sm:px-8 sm:py-16 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
+        <>
+        <section id="create" className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-10 sm:px-8 sm:py-16 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
           <div className="lg:sticky lg:top-8 lg:self-start">
             <p className="mb-5 inline-flex rounded-full border border-[#9f432b]/25 bg-[#fff8ed] px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-[#873821]">
               Бесплатно · RU / KK · за минуту
@@ -603,6 +604,116 @@ export default function Home() {
             </div>
           </form>
         </section>
+
+        <section className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f432b]">
+            Что внутри набора
+          </p>
+          <h2 className="mt-2 max-w-2xl text-3xl font-black tracking-[-0.03em] sm:text-4xl">
+            Из одного фото — всё, что продаёт
+          </h2>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              [
+                "Продающий пост для Instagram",
+                "Цепляющий хук, выгоды покупателя и призыв написать — готов к публикации.",
+              ],
+              [
+                "Сообщение для WhatsApp",
+                "Короткий текст для рассылки клиенткам — вставили и отправили.",
+              ],
+              [
+                "Ответы покупателям",
+                "3–5 готовых ответов на вопросы, которые задают чаще всего.",
+              ],
+              [
+                "Подсказка цены",
+                "«Не продавать дешевле X» — из вашей себестоимости и маржи. В тенге или рублях.",
+              ],
+              [
+                "Страничка товара с кнопкой",
+                "Постоянная ссылка: фото, цена, город и кнопка «Написать в WhatsApp».",
+              ],
+              [
+                "QR для прилавка",
+                "Распечатайте — покупатель на ярмарке сканирует и сразу пишет вам.",
+              ],
+            ].map(([title, text]) => (
+              <div key={title} className="rounded-[24px] border border-black/10 bg-[#fffdf8] p-5">
+                <h3 className="font-black">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-black/60">{text}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 rounded-2xl bg-[#eef0df] px-5 py-4 text-sm font-bold text-[#3f4828]">
+            У SMM-специалиста один такой пост стоит 5–10 тысяч тенге. SatuKit собирает весь
+            набор за минуту — бесплатно.
+          </p>
+        </section>
+
+        <section className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f432b]">
+            Правда важнее красоты
+          </p>
+          <h2 className="mt-2 max-w-2xl text-3xl font-black tracking-[-0.03em] sm:text-4xl">
+            Почему это не «просто нейросеть»
+          </h2>
+          <div className="mt-8 grid gap-4 lg:grid-cols-3">
+            {[
+              [
+                "Только ваши факты",
+                "Если вы не указали состав, доставку или гарантии — SatuKit не придумает их за вас. Всё сомнительное выносится на отдельное подтверждение.",
+              ],
+              [
+                "Публикация под защитой",
+                "Карточка не публикуется, пока в текстах остаются непроверенные утверждения. Покупатель не увидит того, за что вам пришлось бы краснеть.",
+              ],
+              [
+                "Ничего лишнего наружу",
+                "Себестоимость и маржа остаются вашими: на публичной карточке — только то, что вы решили показать.",
+              ],
+            ].map(([title, text]) => (
+              <div key={title} className="rounded-[24px] border border-black/10 bg-white/60 p-5">
+                <h3 className="font-black">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-black/60">{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8">
+          <div className="rounded-[28px] border border-black/10 bg-[#fffdf8] p-6 text-center sm:p-10">
+            <h2 className="mx-auto max-w-2xl text-3xl font-black tracking-[-0.03em] sm:text-4xl">
+              Как это выглядит у покупателя
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl leading-7 text-black/60">
+              Покупатель открывает карточку, видит товар, цену и город — и пишет вам в
+              WhatsApp одним нажатием.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <a
+                href="/p/example"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-black/15 bg-white px-6 py-3 text-sm font-black hover:bg-[#f7f2e8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b]"
+              >
+                Посмотреть пример карточки
+              </a>
+              <a
+                href="#create"
+                className="rounded-full bg-[#9f432b] px-6 py-3 text-sm font-black text-white hover:bg-[#873821] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9f432b] focus-visible:ring-offset-2"
+              >
+                Собрать свой набор
+              </a>
+            </div>
+          </div>
+          <footer className="mt-10 border-t border-black/10 pt-6 pb-4 text-center text-xs leading-6 text-black/40">
+            Бесплатно, без регистрации, с телефона. Сделано за 63 часа на хакатоне nFactorial
+            «Startup Platform» — для сферы партнёра EmpoWomen (APEC Training Centre &amp; ASMAR
+            при поддержке Chevron).
+          </footer>
+        </section>
+        </>
       )}
     </main>
   );
